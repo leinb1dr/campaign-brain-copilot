@@ -1,0 +1,27 @@
+---
+description: Always read the Memory Bank before starting any task
+alwaysApply: true
+---
+
+# Memory Bank protocol (mandatory)
+
+Before you answer, plan, search, or edit anything in this repository, read **all** files in
+`.memory-bank/`, in this order:
+
+1. `.memory-bank/brief.md` — scope and requirements. Developer-owned; never edit it.
+2. `.memory-bank/product.md` — why the project exists and how it should behave.
+3. `.memory-bank/context.md` — current focus, recent changes, next steps.
+4. `.memory-bank/architecture.md` — system design, code paths, critical implementation paths.
+5. `.memory-bank/tech.md` — stack, setup, constraints, verified commands.
+6. `.memory-bank/tasks.md` — repeatable task workflows (optional; may be absent or empty).
+
+This is not optional and applies to trivial tasks too.
+
+Start your first response of every task with `[Memory Bank: Active]` if you read the files, or
+`[Memory Bank: Missing]` if `.memory-bank/` is absent or empty — in which case warn the user
+and suggest running `initialize memory bank`. Follow the marker with a one- or two-sentence
+statement of what you understand the project and the current task to be.
+
+The full protocol — including the `initialize memory bank`, `update memory bank`, and
+`add task` workflows and the rules for keeping `context.md` current — is in
+[AGENTS.md](mdc:AGENTS.md). Read it if you need the details.
