@@ -1,2 +1,32 @@
-# campaign-brain-copilot
-A local-first desktop app for Dungeon Masters using Tauri2, Svelte, TypeScript, Rust backend, and SQLite. Import messy campaign notes and build structured state with AI suggestion review flow.
+# Campaign Brain Co Pilot
+
+A local-first desktop app for Dungeon Masters built with Tauri 2, SvelteKit + TypeScript, Rust, and SQLite.
+
+## What it does
+
+- Opens or creates a campaign vault made of raw markdown files
+- Treats markdown notes as the source of truth
+- Extracts regex-based NPC, location, and plot-point suggestions with file + line references
+- Lets the DM approve or reject suggestions before they become canon
+- Stores approved facts in a local SQLite database inside the vault
+- Provides dashboard, note review, suggestion review, and location briefing screens
+
+## Project layout
+
+- `/src` - SvelteKit frontend routes, stores, and components
+- `/src-tauri` - Rust backend commands, parser, and SQLite layer
+- `/example-vault` - Seed markdown notes for the bundled demo campaign
+
+## Commands
+
+```bash
+npm install
+npm run check
+npm run build
+cargo test --manifest-path /home/runner/work/campaign-brain-copilot/campaign-brain-copilot/src-tauri/Cargo.toml
+npm run tauri dev
+```
+
+## Example campaign vault
+
+Use the "Open example campaign" action on the welcome screen to load the seeded notes under `/example-vault`.
