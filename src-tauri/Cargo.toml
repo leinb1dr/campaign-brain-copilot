@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Campaign Brain Co Pilot"
 authors = ["GitHub Copilot"]
 edition = "2021"
+# Highest MSRV in the resolved dependency tree; older toolchains fail to build it.
+rust-version = "1.88"
 
 [lib]
 name = "campaign_brain_copilot_lib"
