@@ -28,10 +28,64 @@ pub fn create_campaign(vault_path: String) -> Result<CampaignOverview, String> {
     load_campaign(vault)
 }
 
-#[cfg_attr(feature = "desktop-app", tauri::command)]
+#[cfg(feature = "desktop-app")]
+#[tauri::command]
+pub fn open_example_campaign(app: tauri::AppHandle) -> Result<CampaignOverview, String> {
+    load_campaign(example_vault_copy(&app)?)
+}
+
+#[cfg(not(feature = "desktop-app"))]
 pub fn open_example_campaign() -> Result<CampaignOverview, String> {
-    let example_vault = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../example-vault");
-    load_campaign(example_vault)
+    load_campaign(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../example-vault"))
+}
+
+/// Opening a vault writes a SQLite database into it, but the bundled copy lives in the
+/// read-only resource directory, so seed a writable copy under the app data directory.
+#[cfg(feature = "desktop-app")]
+fn example_vault_copy(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    use tauri::Manager;
+
+    let vault = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("Unable to locate the app data directory: {error}"))?
+        .join("example-vault");
+
+    if vault.exists() {
+        return Ok(vault);
+    }
+
+    let bundled = app
+        .path()
+        .resolve("example-vault", tauri::path::BaseDirectory::Resource)
+        .map_err(|error| format!("Unable to locate the bundled example vault: {error}"))?;
+
+    copy_dir(&bundled, &vault)?;
+    Ok(vault)
+}
+
+#[cfg(feature = "desktop-app")]
+fn copy_dir(from: &Path, to: &Path) -> Result<(), String> {
+    fs::create_dir_all(to)
+        .map_err(|error| format!("Unable to create '{}': {error}", to.display()))?;
+
+    let entries = fs::read_dir(from)
+        .map_err(|error| format!("Unable to read '{}': {error}", from.display()))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("Unable to read '{}': {error}", from.display()))?;
+        let source = entry.path();
+        let target = to.join(entry.file_name());
+
+        if source.is_dir() {
+            copy_dir(&source, &target)?;
+        } else {
+            fs::copy(&source, &target)
+                .map_err(|error| format!("Unable to copy '{}': {error}", source.display()))?;
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg_attr(feature = "desktop-app", tauri::command)]

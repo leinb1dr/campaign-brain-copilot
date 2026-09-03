@@ -23,9 +23,21 @@ A local-first desktop app for Dungeon Masters built with Tauri 2, SvelteKit + Ty
 npm install
 npm run check
 npm run build
-cargo test --manifest-path /home/runner/work/campaign-brain-copilot/campaign-brain-copilot/src-tauri/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml
 npm run tauri dev
 ```
+
+`npm run tauri dev` starts Vite on the fixed port `1420` that `src-tauri/tauri.conf.json`
+points at, so run it instead of starting Vite yourself. Building the desktop app needs
+Rust 1.88 or newer plus the [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/).
+
+## Frontend/backend wiring
+
+- SvelteKit runs as a prerendered SPA (`@sveltejs/adapter-static`, `ssr = false`) because
+  Tauri loads the frontend from disk rather than from a Node server.
+- `frontendDist` points at `/build`, the adapter's output directory.
+- `src/lib/tauri/client.ts` detects whether it is running inside the webview and falls back
+  to demo data when the app is opened in a plain browser.
 
 ## Example campaign vault
 
