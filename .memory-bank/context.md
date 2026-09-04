@@ -20,6 +20,13 @@ No product-feature work is in progress.
   generated from `open_campaign(example-vault)` and kept honest by a Rust fixture assertion.
 - Split `.github/workflows/ci.yml` into `rust` and `frontend` jobs. Release still depends on
   both. No WebdriverIO / native-binary smoke suite.
+- Added a repo-managed Cloud Agent environment: `.cursor/environment.json` +
+  `.cursor/install.sh`. `install.sh` pins the stable Rust toolchain (the default image ships
+  Rust 1.83, which fails on edition-2024 crates), runs `npm ci`, and warms the headless
+  `cargo build --no-default-features --tests`. A `vite-dev` terminal serves the UI on port
+  1420, and port 1420 is exposed.
+- Validated the environment setup: `npm run check`, `npm run build`, and
+  `cargo test --no-default-features` all pass; `install.sh` is idempotent.
 
 ## Repository state
 
