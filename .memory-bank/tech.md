@@ -80,11 +80,25 @@ cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
 
 ## Testing
 
-- **Rust:** `#[cfg(test)] mod tests` inside `src-tauri/src/parser/mod.rs`. Two tests:
-  sorted-order note reading (against a real temp directory under `std::env::temp_dir()`) and
-  end-to-end extraction assertions. `db` and `commands` have no tests.
-- **Frontend:** none. `svelte-check` is the only automated gate.
-- **CI:** there is no `.github/` directory. All verification is local.
+- **Rust:** `#[cfg(test)]` in `src-tauri/src/parser/mod.rs` (extraction) and
+  `src-tauri/src/commands/mod.rs` (open/approve/briefing against a temp copy of
+  `example-vault`). Always `cargo test --manifest-path src-tauri/Cargo.toml --no-default-features`.
+  An ignored test `dump_example_campaign_fixture` regenerates `e2e/fixtures/example-campaign.json`.
+  `open_example_campaign` is skipped: the no-Tauri path mutates the checked-in vault, and the
+  desktop path needs `AppHandle`.
+- **Vitest:** `npm run test:unit` — jsdom + `@testing-library/svelte`. Pins
+  `visibleSuggestions`, localStorage persistence, and `SuggestionQueue`. IPC is mocked at
+  `$lib/tauri/client`; `mockIPC` from `@tauri-apps/api/mocks` is unused because stores do not
+  call `invoke` directly.
+- **Playwright:** `npm run test:e2e` — Chromium only, Vite on port 1420. Tests stub
+  `window.__TAURI_INTERNALS__.invoke` via `page.addInitScript` so `isTauriRuntime()` is true
+  and the production `invokeCommand` path runs. Do **not** use `mockIPC` here (it patches the
+  Node realm, not the page). Fixture data is `e2e/fixtures/example-campaign.json`, asserted
+  equal to a fresh `open_campaign` of `example-vault`.
+- **CI:** `.github/workflows/ci.yml` — `rust` job (`dtolnay/rust-toolchain@stable`,
+  `Swatinem/rust-cache@v2` with `workspaces: src-tauri -> target`, cargo test no-default-features)
+  and `frontend` job (npm ci, check, vitest, build, Playwright Chromium + report artifact).
+  `release` needs both. No GTK/WebKit packages on the rust-lib job.
 
 ## Tool usage patterns
 

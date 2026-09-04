@@ -39,10 +39,12 @@ test.describe('campaign IPC', () => {
 
 		await page.getByRole('link', { name: 'Suggestions Review' }).click();
 		await expect(page).toHaveURL(/\/campaign\/suggestions$/);
-		await expect(page.getByRole('heading', { name: 'Blackglass Wharf' })).toBeVisible();
-		await expect(page.getByRole('heading', { name: 'Captain Mirel' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Blackglass Wharf', exact: true })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Captain Mirel', exact: true })).toBeVisible();
 
-		const wharfCard = page.locator('article').filter({ hasText: 'Blackglass Wharf' }).first();
+		const wharfCard = page.locator('article').filter({
+			has: page.getByRole('heading', { name: 'Blackglass Wharf', exact: true })
+		});
 		await wharfCard.getByRole('button', { name: 'Approve' }).click();
 		await expect(wharfCard).toHaveCount(0);
 
@@ -57,11 +59,11 @@ test.describe('campaign IPC', () => {
 		});
 
 		await page.getByRole('link', { name: 'Dashboard' }).click();
-		await expect(page.getByRole('link', { name: 'Blackglass Wharf' })).toBeVisible();
-		await page.getByRole('link', { name: 'Blackglass Wharf' }).click();
+		await expect(page.getByRole('link', { name: 'Blackglass Wharf', exact: true })).toBeVisible();
+		await page.getByRole('link', { name: 'Blackglass Wharf', exact: true }).click();
 
 		await expect(page).toHaveURL(/\/campaign\/location\/blackglass-wharf$/);
-		await expect(page.getByRole('heading', { name: 'Blackglass Wharf' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Blackglass Wharf', exact: true })).toBeVisible();
 		await expect(page.getByText('session-1.md:2')).toBeVisible();
 
 		expect(await tauri.calls()).toContainEqual({
