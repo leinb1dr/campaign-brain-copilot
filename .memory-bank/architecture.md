@@ -22,7 +22,7 @@ src/                              SvelteKit frontend
   routes/
     +layout.svelte                Root layout; calls initializeCampaign() on mount
     +layout.ts                    `export const ssr = false` — SPA mode
-    +page.svelte                  Welcome screen: open / create / example vault
+    +page.svelte                  Welcome: folder picker, existing vaults, example campaign
     campaign/
       +layout.svelte              Campaign shell: header, nav, "open a vault" empty state
       +page.svelte                Dashboard: metric cards + approved-location jump list
@@ -38,11 +38,12 @@ src/                              SvelteKit frontend
     Campaign/CampaignNav|MetricCard|NotesList
     Common/EmptyState|SourceReferenceList
     Suggestions/SuggestionQueue
+    Vault/FolderPicker            In-app directory browser + new-folder form
 
 src-tauri/                        Rust backend
   src/main.rs                     Thin binary entry, feature-gated
   src/lib.rs                      run(): Tauri builder + invoke_handler registration
-  src/commands/mod.rs             The seven Tauri commands + load_campaign()
+  src/commands/mod.rs             The nine Tauri commands + load_campaign()
   src/parser/mod.rs               Markdown reading and regex extraction (+ unit tests)
   src/db/mod.rs                   SQLite schema, reads, writes
   src/models/mod.rs               Shared serde types, slugify(), summarize_locations()
@@ -143,6 +144,7 @@ trims dashes. It is the only link between a location name and its briefing URL
                                    ▼
                             campaign store  ◄──── openCampaignVault / createCampaignVault
                                    │                openExampleVault / approveCampaignSuggestion
+                                   │                browseDirectory / createVaultFolder
         ┌──────────────────────────┼──────────────────────────┐
         ▼                          ▼                          ▼
  campaign/+layout          campaign/+page             campaign/suggestions
@@ -161,12 +163,16 @@ an empty state and a link home instead of the child route.
 
 ### Opening a vault
 
-`+page.svelte` → `openCampaignVault(path)` → `client.openCampaign` → `invoke('open_campaign')`
-→ `commands::open_campaign` → `load_campaign`:
-existence check → `db::initialize` → `parser::read_markdown_notes` →
+`+page.svelte` opens `FolderPicker` via **Create vault** or **Browse for a vault**.
+The picker calls `browseDirectory` / `createVaultFolder` → `list_directory` /
+`create_directory` (browser mock: `mockFileSystem.ts`). Confirming a folder calls
+`createCampaignVault` or `openCampaignVault` → `create_campaign` / `open_campaign` →
+`load_campaign`: existence check → `db::initialize` → `parser::read_markdown_notes` →
 `db::list_approved_facts` → `parser::extract_suggestions` → filter out approved pairs →
-`summarize_locations`. The store then persists `loaded.vaultPath` to `localStorage` and the
-route navigates to `/campaign`.
+`summarize_locations`. The store persists `loaded.vaultPath` as the last vault and prepends
+it to `campaign-brain-known-vaults`, then the route navigates to `/campaign`. Known vaults
+render as buttons on the welcome screen. **Change vault** in `campaign/+layout.svelte`
+returns home without clearing that list.
 
 ### Extraction (`parser::extract_suggestions`)
 

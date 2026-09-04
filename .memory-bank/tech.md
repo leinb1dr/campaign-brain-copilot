@@ -69,9 +69,10 @@ cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
 - **Do not write to the user's markdown.** The only file the app creates inside a vault is
   `.campaign-brain.sqlite3` (plus `session-0.md` when *creating* a brand-new vault).
 - **Tauri permissions are minimal.** `src-tauri/capabilities/default.json` grants only
-  `core:default`. There is no `fs` or `dialog` plugin, which is why the welcome screen asks the
-  user to type a vault path instead of opening a native folder picker. Adding a picker means
-  adding the `tauri-plugin-dialog` dependency *and* the matching capability entry.
+  `core:default`. Folder picking is done with custom `list_directory` / `create_directory`
+  commands (plain `std::fs`), not `tauri-plugin-dialog` or `tauri-plugin-fs`. The welcome
+  screen uses an in-app picker so creating a folder works on every platform and in the
+  browser mock.
 - **SSR is off and must stay off.** Code freely touches `window` and `localStorage`; the
   `browser` guard in the store is the only concession.
 - **Rust ↔ TS types are hand-mirrored.** No codegen. Changing a struct in
