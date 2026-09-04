@@ -10,6 +10,8 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "npm run check && npm run test:rust",
+		"test:rust": "cargo test --manifest-path src-tauri/Cargo.toml --no-default-features",
 		"tauri": "tauri"
 	},
 	"devDependencies": {

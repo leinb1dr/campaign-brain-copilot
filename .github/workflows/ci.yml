@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Typecheck frontend
+        run: npm run check
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
+
+  release:
+    name: Release (${{ matrix.label }})
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            label: macOS ARM
+            args: --target aarch64-apple-darwin
+          - platform: macos-latest
+            label: macOS Intel
+            args: --target x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            label: Linux
+            args: ''
+          - platform: windows-latest
+            label: Windows
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Release metadata
+        id: meta
+        shell: bash
+        run: |
+          version="$(node --input-type=commonjs -e "const { readFileSync } = require('fs'); process.stdout.write(JSON.parse(readFileSync('src-tauri/tauri.conf.json', 'utf8')).version)")"
+          short_sha="${GITHUB_SHA:0:7}"
+          {
+            echo "tag=v${version}-${short_sha}"
+            echo "name=Campaign Brain Co Pilot v${version} (${short_sha})"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ steps.meta.outputs.tag }}
+          releaseName: ${{ steps.meta.outputs.name }}
+          releaseBody: |
+            Desktop builds of Campaign Brain Co Pilot for Linux, macOS, and Windows.
+
+            Download the installer for your platform:
+            - **Windows:** NSIS `.exe` or `.msi`
+            - **macOS:** `.dmg` (Apple Silicon and Intel)
+            - **Linux:** `.AppImage` or `.deb`
+          releaseDraft: false
+          prerelease: false
+          generateReleaseNotes: true
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+          uploadPlainBinary: true
+          retryAttempts: 5
+          args: ${{ matrix.args }}
