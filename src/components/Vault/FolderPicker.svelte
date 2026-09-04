@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { DIRECTORY_ROOTS_PATH } from '$lib/types/campaign';
 	import type { DirectoryListing } from '$lib/types/campaign';
 
 	export let title = 'Choose a folder';
@@ -13,14 +14,25 @@
 	export let onCancel: () => void;
 
 	let folderName = '';
+	let jumpPath = '';
+	$: isRoots = listing.path === DIRECTORY_ROOTS_PATH;
+	$: currentPathLabel = isRoots ? 'This computer' : listing.path;
 
 	function createFolder() {
 		const name = folderName.trim();
-		if (!name || loading) {
+		if (!name || loading || isRoots) {
 			return;
 		}
 		onCreateDirectory(name);
 		folderName = '';
+	}
+
+	function jumpToPath() {
+		const path = jumpPath.trim();
+		if (!path || loading) {
+			return;
+		}
+		onOpenDirectory(path);
 	}
 </script>
 
@@ -35,15 +47,15 @@
 
 		<p class="current-path" aria-live="polite">
 			<span>Current folder</span>
-			<code>{listing.path}</code>
+			<code>{currentPathLabel}</code>
 		</p>
 
 		<div class="toolbar">
 			<button
 				type="button"
 				class="ghost"
-				disabled={loading || !listing.parentPath}
-				on:click={() => listing.parentPath && onOpenDirectory(listing.parentPath)}
+				disabled={loading || listing.parentPath == null}
+				on:click={() => listing.parentPath != null && onOpenDirectory(listing.parentPath)}
 			>
 				Up one folder
 			</button>
@@ -66,6 +78,20 @@
 			{/if}
 		</ul>
 
+		<form class="create" on:submit|preventDefault={jumpToPath}>
+			<label for="jumpPath">Go to folder</label>
+			<div class="create-row">
+				<input
+					id="jumpPath"
+					bind:value={jumpPath}
+					placeholder="D:\campaigns or \\server\share\vault"
+					disabled={loading}
+					autocomplete="off"
+				/>
+				<button type="submit" class="ghost" disabled={loading || !jumpPath.trim()}>Open path</button>
+			</div>
+		</form>
+
 		<form class="create" on:submit|preventDefault={createFolder}>
 			<label for="newFolderName">New folder name</label>
 			<div class="create-row">
@@ -73,10 +99,12 @@
 					id="newFolderName"
 					bind:value={folderName}
 					placeholder="my-campaign"
-					disabled={loading}
+					disabled={loading || isRoots}
 					autocomplete="off"
 				/>
-				<button type="submit" class="secondary" disabled={loading || !folderName.trim()}>Create folder</button>
+				<button type="submit" class="secondary" disabled={loading || isRoots || !folderName.trim()}
+					>Create folder</button
+				>
 			</div>
 		</form>
 
@@ -86,7 +114,9 @@
 
 		<div class="actions">
 			<button type="button" class="ghost" disabled={loading} on:click={onCancel}>Cancel</button>
-			<button type="button" disabled={loading} on:click={() => onConfirm(listing.path)}>{confirmLabel}</button>
+			<button type="button" disabled={loading || isRoots} on:click={() => onConfirm(listing.path)}
+				>{confirmLabel}</button
+			>
 		</div>
 	</div>
 </div>

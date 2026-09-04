@@ -50,6 +50,8 @@ export interface CampaignOverview {
 	locations: LocationSummary[];
 }
 
+export const DIRECTORY_ROOTS_PATH = '::roots';
+
 export interface DirectoryEntry {
 	name: string;
 	path: string;

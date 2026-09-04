@@ -70,4 +70,22 @@ describe('FolderPicker', () => {
 		await user.click(screen.getByRole('button', { name: 'Cancel' }));
 		expect(onCancel).toHaveBeenCalledOnce();
 	});
+
+	it('opens an absolute path including other drives or UNC shares', async () => {
+		const user = userEvent.setup();
+		const { onOpenDirectory } = renderPicker();
+
+		await user.type(screen.getByLabelText('Go to folder'), 'D:\\campaigns\\harbor');
+		await user.click(screen.getByRole('button', { name: 'Open path' }));
+		expect(onOpenDirectory).toHaveBeenCalledWith('D:\\campaigns\\harbor');
+	});
+
+	it('disables creating and confirming on the computer roots listing', () => {
+		renderPicker({ path: '::roots', parentPath: null, entries: [{ name: 'C:', path: 'C:\\', isVault: false }] });
+
+		expect(screen.getByText('This computer')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Use this folder' })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Create folder' })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Up one folder' })).toBeDisabled();
+	});
 });

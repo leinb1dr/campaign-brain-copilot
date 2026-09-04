@@ -22,7 +22,9 @@ test.describe('campaign IPC', () => {
 	test('opens a vault folder through open_campaign', async ({ page, tauri }) => {
 		await page.getByRole('button', { name: 'Browse for a vault' }).click();
 		await expect(page.getByRole('dialog', { name: 'Open a campaign vault' })).toBeVisible();
-		await page.getByRole('button', { name: /harbor-notes/ }).click();
+		await page.getByLabel('Go to folder').fill('/campaigns/harbor-notes');
+		await page.getByRole('button', { name: 'Open path' }).click();
+		await expect(page.getByText('/campaigns/harbor-notes')).toBeVisible();
 		await page.getByRole('button', { name: 'Open this folder' }).click();
 
 		await expect(page).toHaveURL(/\/campaign$/);

@@ -75,6 +75,13 @@ export const test = base.extend<{ tauri: { calls: () => Promise<InvokeCall[]> } 
 			}
 
 			function listDirectory(path) {
+				if (String(path ?? '').trim() === '::roots') {
+					return {
+						path: '::roots',
+						parentPath: null,
+						entries: [{ name: 'campaigns', path: '/campaigns', isVault: false }]
+					};
+				}
 				const current = normalizePath(path && String(path).trim() ? path : '/campaigns');
 				if (!directories.has(current)) {
 					throw new Error(`Folder '${current}' does not exist.`);

@@ -18,6 +18,8 @@ Create-vault flow: in-app folder picker plus remembered existing vaults.
   listed under **Existing vaults**. Campaign header has **Change vault**.
 - Tests: Rust list/create/reopen, Vitest picker + known-vaults store, Playwright
   create-then-open.
+- Folder picker follows directory symlinks and can jump to an absolute path (other
+  Windows drives, UNC shares). Up from a Windows drive root lists `::roots`.
 
 ## Repository state
 

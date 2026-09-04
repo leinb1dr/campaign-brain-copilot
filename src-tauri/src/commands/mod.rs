@@ -33,12 +33,18 @@ pub fn create_campaign(vault_path: String) -> Result<CampaignOverview, String> {
 
 #[cfg_attr(feature = "desktop-app", tauri::command)]
 pub fn list_directory(path: Option<String>) -> Result<DirectoryListing, String> {
-    let dir = resolve_directory_path(path)?;
-    read_directory_listing(&dir)
+    match path.as_deref().map(str::trim) {
+        Some(ROOTS_PATH) => list_roots(),
+        Some(value) if !value.is_empty() => read_directory_listing(&PathBuf::from(value)),
+        _ => read_directory_listing(&default_root()?),
+    }
 }
 
 #[cfg_attr(feature = "desktop-app", tauri::command)]
 pub fn create_directory(parent_path: String, name: String) -> Result<DirectoryListing, String> {
+    if parent_path.trim() == ROOTS_PATH {
+        return Err("Choose a drive or folder before creating a new folder.".to_string());
+    }
     let folder_name = validate_folder_name(&name)?;
     let parent = PathBuf::from(&parent_path);
     if !parent.is_dir() {
@@ -60,12 +66,7 @@ pub fn create_directory(parent_path: String, name: String) -> Result<DirectoryLi
     read_directory_listing(&created)
 }
 
-fn resolve_directory_path(path: Option<String>) -> Result<PathBuf, String> {
-    match path.as_deref().map(str::trim).filter(|value| !value.is_empty()) {
-        Some(value) => Ok(PathBuf::from(value)),
-        None => default_root(),
-    }
-}
+const ROOTS_PATH: &str = "::roots";
 
 fn default_root() -> Result<PathBuf, String> {
     std::env::var_os("HOME")
@@ -104,19 +105,17 @@ fn read_directory_listing(dir: &Path) -> Result<DirectoryListing, String> {
 
     for entry in reader {
         let entry = entry.map_err(|error| format!("Unable to read folder '{}': {error}", dir.display()))?;
-        let file_type = entry
-            .file_type()
-            .map_err(|error| format!("Unable to read folder '{}': {error}", dir.display()))?;
-        if !file_type.is_dir() {
-            continue;
-        }
-
         let name = entry.file_name().to_string_lossy().to_string();
         if name.starts_with('.') {
             continue;
         }
 
         let path = entry.path();
+        // Follow symlinks so iCloud/Dropbox-style linked folders appear.
+        if !path.is_dir() {
+            continue;
+        }
+
         entries.push(DirectoryEntry {
             is_vault: is_campaign_vault(&path),
             name,
@@ -128,15 +127,50 @@ fn read_directory_listing(dir: &Path) -> Result<DirectoryListing, String> {
 
     Ok(DirectoryListing {
         path: dir.display().to_string(),
-        parent_path: dir.parent().and_then(|parent| {
-            if parent.as_os_str().is_empty() {
-                None
-            } else {
-                Some(parent.display().to_string())
-            }
-        }),
+        parent_path: parent_listing_path(dir),
         entries,
     })
+}
+
+fn parent_listing_path(dir: &Path) -> Option<String> {
+    match dir.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => Some(parent.display().to_string()),
+        _ if cfg!(windows) => Some(ROOTS_PATH.to_string()),
+        _ => None,
+    }
+}
+
+fn list_roots() -> Result<DirectoryListing, String> {
+    #[cfg(windows)]
+    {
+        Ok(DirectoryListing {
+            path: ROOTS_PATH.to_string(),
+            parent_path: None,
+            entries: windows_drive_entries(),
+        })
+    }
+    #[cfg(not(windows))]
+    {
+        let mut listing = read_directory_listing(Path::new("/"))?;
+        listing.path = ROOTS_PATH.to_string();
+        listing.parent_path = None;
+        Ok(listing)
+    }
+}
+
+#[cfg(windows)]
+fn windows_drive_entries() -> Vec<DirectoryEntry> {
+    (b'A'..=b'Z')
+        .filter_map(|letter| {
+            let drive = format!("{}:\\", letter as char);
+            let path = PathBuf::from(&drive);
+            path.is_dir().then(|| DirectoryEntry {
+                is_vault: false,
+                name: format!("{}:", letter as char),
+                path: drive,
+            })
+        })
+        .collect()
 }
 
 fn is_campaign_vault(path: &Path) -> bool {
@@ -512,6 +546,38 @@ mod tests {
         assert_eq!(listing.path, root.display().to_string());
 
         fs::remove_dir_all(root).expect("temporary directory should be removed");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn list_directory_includes_symlinked_folders() {
+        let root = unique_temp_dir("campaign-brain-symlink-directory");
+        fs::create_dir_all(root.join("real-vault")).expect("real folder should be created");
+        fs::write(root.join("real-vault").join("session-1.md"), "# Harbor\n").expect("note should be written");
+
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(root.join("real-vault"), root.join("linked-vault"))
+                .expect("directory symlink should be created");
+            let listing = list_directory(Some(root.display().to_string())).expect("directory should list");
+            let linked = listing
+                .entries
+                .iter()
+                .find(|entry| entry.name == "linked-vault")
+                .expect("symlinked folder should appear");
+            assert!(linked.is_vault);
+        }
+
+        fs::remove_dir_all(root).expect("temporary directory should be removed");
+    }
+
+    #[test]
+    fn list_directory_roots_is_not_a_usable_vault_path() {
+        let listing = list_directory(Some("::roots".to_string())).expect("roots listing should succeed");
+        assert_eq!(listing.path, "::roots");
+        assert!(listing.parent_path.is_none());
+        let rejected = create_directory("::roots".to_string(), "vault".to_string());
+        assert!(rejected.unwrap_err().contains("Choose a drive or folder"));
     }
 
     #[test]

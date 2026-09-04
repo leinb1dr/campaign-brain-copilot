@@ -1,4 +1,4 @@
-import type { CampaignOverview, DirectoryListing } from '$lib/types/campaign';
+import { DIRECTORY_ROOTS_PATH, type CampaignOverview, type DirectoryListing } from '$lib/types/campaign';
 
 export const MOCK_VAULT_ROOT = '/campaigns';
 
@@ -176,7 +176,15 @@ function listingFor(path: string): DirectoryListing {
 }
 
 export function listMockDirectory(path?: string | null): DirectoryListing {
-	return listingFor(path && path.trim() ? path : MOCK_VAULT_ROOT);
+	const requested = path?.trim() ?? '';
+	if (requested === DIRECTORY_ROOTS_PATH) {
+		return {
+			...listingFor('/'),
+			path: DIRECTORY_ROOTS_PATH,
+			parentPath: null
+		};
+	}
+	return listingFor(requested ? requested : MOCK_VAULT_ROOT);
 }
 
 export function createMockDirectory(parentPathValue: string, name: string): DirectoryListing {

@@ -21,6 +21,14 @@ describe('mockFileSystem', () => {
 		});
 	});
 
+	it('lists computer roots without treating them as a vault path', () => {
+		expect(listMockDirectory('::roots')).toMatchObject({
+			path: '::roots',
+			parentPath: null
+		});
+		expect(listMockDirectory('::roots').entries.some((entry) => entry.name === 'campaigns')).toBe(true);
+	});
+
 	it('creates a folder, then opens it as a seeded vault', () => {
 		const created = createMockDirectory('/campaigns', 'frostward');
 		expect(created.path).toBe('/campaigns/frostward');
