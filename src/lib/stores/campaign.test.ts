@@ -7,19 +7,27 @@ const createCampaign = vi.fn();
 const openExampleCampaign = vi.fn();
 const approveSuggestion = vi.fn();
 const loadLocationBriefing = vi.fn();
+const listDirectory = vi.fn();
+const createDirectory = vi.fn();
 
 vi.mock('$lib/tauri/client', () => ({
 	openCampaign: (...args: unknown[]) => openCampaign(...args),
 	createCampaign: (...args: unknown[]) => createCampaign(...args),
 	openExampleCampaign: (...args: unknown[]) => openExampleCampaign(...args),
 	approveSuggestion: (...args: unknown[]) => approveSuggestion(...args),
-	loadLocationBriefing: (...args: unknown[]) => loadLocationBriefing(...args)
+	loadLocationBriefing: (...args: unknown[]) => loadLocationBriefing(...args),
+	listDirectory: (...args: unknown[]) => listDirectory(...args),
+	createDirectory: (...args: unknown[]) => createDirectory(...args)
 }));
 
 import {
 	approveCampaignSuggestion,
+	browseDirectory,
 	campaign,
+	createCampaignVault,
+	createVaultFolder,
 	initializeCampaign,
+	knownVaults,
 	openCampaignVault,
 	openExampleVault,
 	rejectCampaignSuggestion,
@@ -27,6 +35,7 @@ import {
 } from './campaign';
 
 const STORAGE_KEY = 'campaign-brain-last-vault';
+const KNOWN_VAULTS_KEY = 'campaign-brain-known-vaults';
 
 const wharf: Suggestion = {
 	id: 'Location:session-1.md:2:blackglass wharf',
@@ -68,6 +77,8 @@ describe('campaign store', () => {
 	beforeEach(async () => {
 		localStorage.clear();
 		vi.clearAllMocks();
+		campaign.set(null);
+		knownVaults.set([]);
 		openCampaign.mockResolvedValue(sampleCampaign());
 		await openCampaignVault('/tmp/example-vault');
 	});
@@ -98,14 +109,21 @@ describe('campaign store', () => {
 		expect(get(visibleSuggestions)).toHaveLength(2);
 	});
 
-	it('persists the loaded vault path to localStorage', async () => {
+	it('persists the loaded vault path and known vaults', async () => {
 		expect(localStorage.getItem(STORAGE_KEY)).toBe('/tmp/example-vault');
+		expect(JSON.parse(localStorage.getItem(KNOWN_VAULTS_KEY) ?? '[]')).toEqual([
+			{ name: 'example-vault', path: '/tmp/example-vault' }
+		]);
 
-		openCampaign.mockResolvedValue(sampleCampaign({ vaultPath: '/campaigns/harbor' }));
+		openCampaign.mockResolvedValue(sampleCampaign({ vaultPath: '/campaigns/harbor', campaignName: 'harbor' }));
 		await openCampaignVault('/ignored-argument');
 
 		expect(localStorage.getItem(STORAGE_KEY)).toBe('/campaigns/harbor');
 		expect(openCampaign).toHaveBeenCalledWith('/ignored-argument');
+		expect(JSON.parse(localStorage.getItem(KNOWN_VAULTS_KEY) ?? '[]')).toEqual([
+			{ name: 'harbor', path: '/campaigns/harbor' },
+			{ name: 'example-vault', path: '/tmp/example-vault' }
+		]);
 	});
 
 	it('reopens the saved vault on initializeCampaign', async () => {
@@ -122,12 +140,17 @@ describe('campaign store', () => {
 	it('forgets a saved vault when reopen fails', async () => {
 		campaign.set(null);
 		localStorage.setItem(STORAGE_KEY, '/missing/vault');
+		localStorage.setItem(
+			KNOWN_VAULTS_KEY,
+			JSON.stringify([{ name: 'vault', path: '/missing/vault' }])
+		);
 		openCampaign.mockRejectedValue(new Error('Campaign vault does not exist.'));
 
 		await initializeCampaign();
 
 		expect(get(campaign)).toBeNull();
 		expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+		expect(get(knownVaults)).toEqual([]);
 	});
 
 	it('stores the example campaign path after openExampleVault', async () => {
@@ -138,6 +161,34 @@ describe('campaign store', () => {
 		expect(openExampleCampaign).toHaveBeenCalledOnce();
 		expect(localStorage.getItem(STORAGE_KEY)).toBe('/example-vault');
 		expect(get(campaign)?.vaultPath).toBe('/example-vault');
+		expect(get(knownVaults)[0]).toEqual({ name: 'example-vault', path: '/example-vault' });
+	});
+
+	it('remembers a created vault so it can be opened later', async () => {
+		createCampaign.mockResolvedValue(
+			sampleCampaign({ vaultPath: '/campaigns/frostward', campaignName: 'frostward', notes: [], suggestions: [] })
+		);
+
+		await createCampaignVault('/campaigns/frostward');
+
+		expect(createCampaign).toHaveBeenCalledWith('/campaigns/frostward');
+		expect(get(campaign)?.campaignName).toBe('frostward');
+		expect(get(knownVaults)[0]).toEqual({ name: 'frostward', path: '/campaigns/frostward' });
+	});
+
+	it('browses and creates folders through the client', async () => {
+		const listing = {
+			path: '/campaigns/new-vault',
+			parentPath: '/campaigns',
+			entries: []
+		};
+		listDirectory.mockResolvedValue({ path: '/campaigns', parentPath: '/', entries: [] });
+		createDirectory.mockResolvedValue(listing);
+
+		await expect(browseDirectory()).resolves.toMatchObject({ path: '/campaigns' });
+		await expect(createVaultFolder('/campaigns', 'new-vault')).resolves.toEqual(listing);
+		expect(listDirectory).toHaveBeenCalledWith(undefined);
+		expect(createDirectory).toHaveBeenCalledWith('/campaigns', 'new-vault');
 	});
 
 	it('approves through the client and replaces campaign state', async () => {

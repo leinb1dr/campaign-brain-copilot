@@ -19,9 +19,11 @@ test.describe('campaign IPC', () => {
 		expect(calls.find((call) => call.cmd === 'open_example_campaign')?.args ?? {}).toEqual({});
 	});
 
-	test('opens a vault path through open_campaign with the typed argument', async ({ page, tauri }) => {
-		await page.getByLabel('Campaign vault path').fill('/campaigns/harbor-notes');
-		await page.getByRole('button', { name: 'Open vault' }).click();
+	test('opens a vault folder through open_campaign', async ({ page, tauri }) => {
+		await page.getByRole('button', { name: 'Browse for a vault' }).click();
+		await expect(page.getByRole('dialog', { name: 'Open a campaign vault' })).toBeVisible();
+		await page.getByRole('button', { name: /harbor-notes/ }).click();
+		await page.getByRole('button', { name: 'Open this folder' }).click();
 
 		await expect(page).toHaveURL(/\/campaign$/);
 		await expect(page.getByRole('heading', { name: 'harbor-notes' })).toBeVisible();
@@ -30,6 +32,38 @@ test.describe('campaign IPC', () => {
 		expect(await tauri.calls()).toContainEqual({
 			cmd: 'open_campaign',
 			args: { vaultPath: '/campaigns/harbor-notes' }
+		});
+	});
+
+	test('creates a vault folder and later opens it from existing vaults', async ({ page, tauri }) => {
+		await page.getByRole('button', { name: 'Create vault' }).click();
+		await expect(page.getByRole('dialog', { name: 'Create a campaign vault' })).toBeVisible();
+		await page.getByLabel('New folder name').fill('frostward-campaign');
+		await page.getByRole('button', { name: 'Create folder' }).click();
+		await expect(page.getByText('/campaigns/frostward-campaign')).toBeVisible();
+		await page.getByRole('button', { name: 'Use this folder' }).click();
+
+		await expect(page).toHaveURL(/\/campaign$/);
+		await expect(page.getByRole('heading', { name: 'frostward-campaign' })).toBeVisible();
+		expect(await tauri.calls()).toContainEqual({
+			cmd: 'create_directory',
+			args: { parentPath: '/campaigns', name: 'frostward-campaign' }
+		});
+		expect(await tauri.calls()).toContainEqual({
+			cmd: 'create_campaign',
+			args: { vaultPath: '/campaigns/frostward-campaign' }
+		});
+
+		await page.getByRole('link', { name: 'Change vault' }).click();
+		await expect(page).toHaveURL('/');
+		await expect(page.getByRole('button', { name: /frostward-campaign/ })).toBeVisible();
+		await page.getByRole('button', { name: /frostward-campaign/ }).click();
+
+		await expect(page).toHaveURL(/\/campaign$/);
+		await expect(page.getByRole('heading', { name: 'frostward-campaign' })).toBeVisible();
+		expect(await tauri.calls()).toContainEqual({
+			cmd: 'open_campaign',
+			args: { vaultPath: '/campaigns/frostward-campaign' }
 		});
 	});
 

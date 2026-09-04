@@ -44,6 +44,75 @@ export const test = base.extend<{ tauri: { calls: () => Promise<InvokeCall[]> } 
 				return vaultPath.split(/[\\/]/).filter(Boolean).at(-1) ?? 'Campaign Vault';
 			}
 
+			function normalizePath(value) {
+				const parts = String(value ?? '')
+					.split(/[\\/]/)
+					.filter(Boolean);
+				return parts.length === 0 ? '/' : `/${parts.join('/')}`;
+			}
+
+			function parentPath(value) {
+				const parts = normalizePath(value).split('/').filter(Boolean);
+				if (parts.length === 0) {
+					return null;
+				}
+				parts.pop();
+				return parts.length === 0 ? '/' : `/${parts.join('/')}`;
+			}
+
+			function ensureDirectory(value) {
+				let current = '/';
+				directories.add(current);
+				for (const part of normalizePath(value).split('/').filter(Boolean)) {
+					current = current === '/' ? `/${part}` : `${current}/${part}`;
+					directories.add(current);
+				}
+			}
+
+			function isVault(dir) {
+				const prefix = dir === '/' ? '/' : `${dir}/`;
+				return [...files].some((filePath) => filePath.startsWith(prefix) && (filePath.endsWith('.md') || filePath.endsWith('.campaign-brain.sqlite3')));
+			}
+
+			function listDirectory(path) {
+				const current = normalizePath(path && String(path).trim() ? path : '/campaigns');
+				if (!directories.has(current)) {
+					throw new Error(`Folder '${current}' does not exist.`);
+				}
+				const entries = [...directories]
+					.filter((dir) => dir !== current && parentPath(dir) === current)
+					.map((dir) => ({
+						name: dir.split('/').filter(Boolean).at(-1),
+						path: dir,
+						isVault: isVault(dir)
+					}))
+					.sort((left, right) => left.name.localeCompare(right.name));
+				return { path: current, parentPath: parentPath(current), entries };
+			}
+
+			function createDirectory(parent, name) {
+				const folderName = String(name ?? '').trim();
+				if (!folderName) {
+					throw new Error('Enter a folder name.');
+				}
+				if (folderName.includes('/') || folderName.includes('\\')) {
+					throw new Error('Folder names cannot contain path separators.');
+				}
+				const parentDir = normalizePath(parent);
+				if (!directories.has(parentDir)) {
+					throw new Error(`Folder '${parentDir}' does not exist.`);
+				}
+				const created = parentDir === '/' ? `/${folderName}` : `${parentDir}/${folderName}`;
+				if (directories.has(created)) {
+					throw new Error(`A folder named '${folderName}' already exists in '${parentDir}'.`);
+				}
+				directories.add(created);
+				return listDirectory(created);
+			}
+
+			const directories = new Set(['/', '/campaigns', '/campaigns/harbor-notes']);
+			const files = new Set(['/campaigns/harbor-notes/session-1.md']);
+
 			function summarizeLocations(facts) {
 				const grouped = new Map();
 				for (const fact of facts.filter((item) => item.kind === 'location')) {
@@ -78,14 +147,28 @@ export const test = base.extend<{ tauri: { calls: () => Promise<InvokeCall[]> } 
 				invoke: async (cmd, args) => {
 					calls.push({ cmd, args });
 					switch (cmd) {
-						case 'open_campaign':
-							return buildOverview(String(args?.vaultPath ?? ''));
+						case 'list_directory':
+							return listDirectory(args?.path);
+						case 'create_directory':
+							return createDirectory(args?.parentPath, args?.name);
+						case 'open_campaign': {
+							const vaultPath = normalizePath(String(args?.vaultPath ?? ''));
+							if (!directories.has(vaultPath)) {
+								throw new Error(`Campaign vault '${vaultPath}' does not exist.`);
+							}
+							return buildOverview(vaultPath);
+						}
 						case 'open_example_campaign':
+							ensureDirectory(String(initial.vaultPath));
 							return buildOverview(String(initial.vaultPath));
-						case 'create_campaign':
+						case 'create_campaign': {
+							const vaultPath = normalizePath(String(args?.vaultPath ?? ''));
+							ensureDirectory(vaultPath);
+							files.add(`${vaultPath}/session-0.md`);
 							approvedFacts = [];
 							nextFactId = 1;
-							return buildOverview(String(args?.vaultPath ?? ''));
+							return buildOverview(vaultPath);
+						}
 						case 'approve_suggestion': {
 							const suggestion = args?.suggestion;
 							const duplicate = approvedFacts.some(

@@ -73,6 +73,22 @@ pub struct CampaignOverview {
     pub locations: Vec<LocationSummary>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryEntry {
+    pub name: String,
+    pub path: String,
+    pub is_vault: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryListing {
+    pub path: String,
+    pub parent_path: Option<String>,
+    pub entries: Vec<DirectoryEntry>,
+}
+
 pub fn slugify(value: &str) -> String {
     let mut slug = String::new();
     let mut previous_was_dash = false;

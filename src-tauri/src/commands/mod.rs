@@ -1,6 +1,9 @@
 use crate::{
     db,
-    models::{slugify, summarize_locations, CampaignOverview, LocationBriefing, Suggestion, SuggestionKind},
+    models::{
+        slugify, summarize_locations, CampaignOverview, DirectoryEntry, DirectoryListing, LocationBriefing,
+        Suggestion, SuggestionKind,
+    },
     parser,
 };
 use std::{collections::HashSet, fs, path::{Path, PathBuf}};
@@ -26,6 +29,129 @@ pub fn create_campaign(vault_path: String) -> Result<CampaignOverview, String> {
     }
 
     load_campaign(vault)
+}
+
+#[cfg_attr(feature = "desktop-app", tauri::command)]
+pub fn list_directory(path: Option<String>) -> Result<DirectoryListing, String> {
+    let dir = resolve_directory_path(path)?;
+    read_directory_listing(&dir)
+}
+
+#[cfg_attr(feature = "desktop-app", tauri::command)]
+pub fn create_directory(parent_path: String, name: String) -> Result<DirectoryListing, String> {
+    let folder_name = validate_folder_name(&name)?;
+    let parent = PathBuf::from(&parent_path);
+    if !parent.is_dir() {
+        return Err(format!("Folder '{}' does not exist.", parent.display()));
+    }
+
+    let created = parent.join(&folder_name);
+    if created.exists() {
+        return Err(format!(
+            "A folder named '{}' already exists in '{}'.",
+            folder_name,
+            parent.display()
+        ));
+    }
+
+    fs::create_dir(&created)
+        .map_err(|error| format!("Unable to create folder '{}': {error}", created.display()))?;
+
+    read_directory_listing(&created)
+}
+
+fn resolve_directory_path(path: Option<String>) -> Result<PathBuf, String> {
+    match path.as_deref().map(str::trim).filter(|value| !value.is_empty()) {
+        Some(value) => Ok(PathBuf::from(value)),
+        None => default_root(),
+    }
+}
+
+fn default_root() -> Result<PathBuf, String> {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .or_else(|| std::env::current_dir().ok())
+        .filter(|path| path.is_dir())
+        .ok_or_else(|| "Unable to locate a starting folder for the picker.".to_string())
+}
+
+fn validate_folder_name(name: &str) -> Result<String, String> {
+    let folder_name = name.trim();
+    if folder_name.contains('/') || folder_name.contains('\\') || folder_name.contains('\0') {
+        return Err("Folder names cannot contain path separators.".to_string());
+    }
+    if folder_name.is_empty() {
+        return Err("Enter a folder name.".to_string());
+    }
+    if folder_name == "." || folder_name == ".." || folder_name.starts_with('.') {
+        return Err("That folder name is not allowed.".to_string());
+    }
+    Ok(folder_name.to_string())
+}
+
+fn read_directory_listing(dir: &Path) -> Result<DirectoryListing, String> {
+    if !dir.exists() {
+        return Err(format!("Folder '{}' does not exist.", dir.display()));
+    }
+    if !dir.is_dir() {
+        return Err(format!("'{}' is not a folder.", dir.display()));
+    }
+
+    let mut entries = Vec::new();
+    let reader = fs::read_dir(dir)
+        .map_err(|error| format!("Unable to read folder '{}': {error}", dir.display()))?;
+
+    for entry in reader {
+        let entry = entry.map_err(|error| format!("Unable to read folder '{}': {error}", dir.display()))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("Unable to read folder '{}': {error}", dir.display()))?;
+        if !file_type.is_dir() {
+            continue;
+        }
+
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name.starts_with('.') {
+            continue;
+        }
+
+        let path = entry.path();
+        entries.push(DirectoryEntry {
+            is_vault: is_campaign_vault(&path),
+            name,
+            path: path.display().to_string(),
+        });
+    }
+
+    entries.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
+
+    Ok(DirectoryListing {
+        path: dir.display().to_string(),
+        parent_path: dir.parent().and_then(|parent| {
+            if parent.as_os_str().is_empty() {
+                None
+            } else {
+                Some(parent.display().to_string())
+            }
+        }),
+        entries,
+    })
+}
+
+fn is_campaign_vault(path: &Path) -> bool {
+    if path.join(".campaign-brain.sqlite3").exists() {
+        return true;
+    }
+
+    fs::read_dir(path)
+        .ok()
+        .map(|entries| {
+            entries.filter_map(|entry| entry.ok()).any(|entry| {
+                entry.path().extension().and_then(|extension| extension.to_str()) == Some("md")
+            })
+        })
+        .unwrap_or(false)
 }
 
 #[cfg(feature = "desktop-app")]
@@ -359,6 +485,67 @@ mod tests {
             .iter()
             .any(|source| source.file_path == "session-1.md"));
         assert!(briefing.related_plot_points.iter().any(|value| value == &plot.value));
+
+        fs::remove_dir_all(vault).expect("temporary vault should be removed");
+    }
+
+    #[test]
+    fn list_directory_skips_hidden_folders_and_marks_vaults() {
+        let root = unique_temp_dir("campaign-brain-list-directory");
+        fs::create_dir_all(root.join("harbor-notes")).expect("visible folder should be created");
+        fs::create_dir_all(root.join(".hidden")).expect("hidden folder should be created");
+        fs::write(root.join("notes.md"), "not a folder\n").expect("file should be ignored");
+        fs::write(
+            root.join("harbor-notes").join("session-1.md"),
+            "# Harbor\n",
+        )
+        .expect("vault note should be written");
+
+        let listing = list_directory(Some(root.display().to_string())).expect("directory should list");
+        let names = listing
+            .entries
+            .iter()
+            .map(|entry| entry.name.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(names, vec!["harbor-notes"]);
+        assert!(listing.entries[0].is_vault);
+        assert_eq!(listing.path, root.display().to_string());
+
+        fs::remove_dir_all(root).expect("temporary directory should be removed");
+    }
+
+    #[test]
+    fn create_directory_makes_a_child_folder_and_opens_it() {
+        let root = unique_temp_dir("campaign-brain-create-directory");
+        fs::create_dir_all(&root).expect("parent folder should exist");
+
+        let listing = create_directory(root.display().to_string(), "  frostward  ".to_string())
+            .expect("folder should be created");
+        assert!(root.join("frostward").is_dir());
+        assert_eq!(listing.path, root.join("frostward").display().to_string());
+        assert!(listing.entries.is_empty());
+
+        let duplicate = create_directory(root.display().to_string(), "frostward".to_string());
+        assert!(duplicate.unwrap_err().contains("already exists"));
+
+        let invalid = create_directory(root.display().to_string(), "foo/bar".to_string());
+        assert!(invalid.unwrap_err().contains("path separators"));
+
+        fs::remove_dir_all(root).expect("temporary directory should be removed");
+    }
+
+    #[test]
+    fn create_campaign_seeds_session_zero_and_can_be_reopened() {
+        let vault = unique_temp_dir("campaign-brain-create-campaign");
+        let created = create_campaign(vault.display().to_string()).expect("vault should be created");
+        assert_eq!(created.notes.len(), 1);
+        assert_eq!(created.notes[0].file_name, "session-0.md");
+        assert!(vault.join("session-0.md").exists());
+        assert!(vault.join(".campaign-brain.sqlite3").exists());
+
+        let reopened = open_campaign(vault.display().to_string()).expect("created vault should open");
+        assert_eq!(reopened.notes.len(), 1);
+        assert_eq!(reopened.campaign_name, created.campaign_name);
 
         fs::remove_dir_all(vault).expect("temporary vault should be removed");
     }

@@ -1,27 +1,122 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { createCampaignVault, openCampaignVault, openExampleVault } from '$lib/stores/campaign';
+	import FolderPicker from '../components/Vault/FolderPicker.svelte';
+	import {
+		browseDirectory,
+		createCampaignVault,
+		createVaultFolder,
+		knownVaults,
+		openCampaignVault,
+		openExampleVault
+	} from '$lib/stores/campaign';
+	import type { DirectoryListing } from '$lib/types/campaign';
 
-	let vaultPath = '';
 	let error = '';
 	let loading = false;
+	let pickerMode: 'open' | 'create' | null = null;
+	let listing: DirectoryListing | null = null;
+	let pickerError = '';
+	let pickerLoading = false;
 
-	async function handle(action: 'open' | 'create' | 'example') {
+	async function openLoadedVault() {
+		await goto('/campaign');
+	}
+
+	async function handleOpen(path: string) {
 		loading = true;
 		error = '';
 		try {
-			if (action === 'example') {
-				await openExampleVault();
-			} else if (action === 'create') {
-				await createCampaignVault(vaultPath.trim());
-			} else {
-				await openCampaignVault(vaultPath.trim());
-			}
-			await goto('/campaign');
+			await openCampaignVault(path);
+			await openLoadedVault();
 		} catch (reason) {
 			error = reason instanceof Error ? reason.message : 'Unable to open the campaign vault.';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function handleCreate(path: string) {
+		loading = true;
+		error = '';
+		try {
+			await createCampaignVault(path);
+			await openLoadedVault();
+		} catch (reason) {
+			error = reason instanceof Error ? reason.message : 'Unable to create the campaign vault.';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function handleExample() {
+		loading = true;
+		error = '';
+		try {
+			await openExampleVault();
+			await openLoadedVault();
+		} catch (reason) {
+			error = reason instanceof Error ? reason.message : 'Unable to open the campaign vault.';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function showPicker(mode: 'open' | 'create') {
+		pickerLoading = true;
+		pickerError = '';
+		error = '';
+		pickerMode = mode;
+		try {
+			listing = await browseDirectory();
+		} catch (reason) {
+			pickerMode = null;
+			listing = null;
+			error = reason instanceof Error ? reason.message : 'Unable to open the folder picker.';
+		} finally {
+			pickerLoading = false;
+		}
+	}
+
+	async function openDirectory(path: string) {
+		pickerLoading = true;
+		pickerError = '';
+		try {
+			listing = await browseDirectory(path);
+		} catch (reason) {
+			pickerError = reason instanceof Error ? reason.message : 'Unable to open that folder.';
+		} finally {
+			pickerLoading = false;
+		}
+	}
+
+	async function createDirectory(name: string) {
+		if (!listing) {
+			return;
+		}
+		pickerLoading = true;
+		pickerError = '';
+		try {
+			listing = await createVaultFolder(listing.path, name);
+		} catch (reason) {
+			pickerError = reason instanceof Error ? reason.message : 'Unable to create that folder.';
+		} finally {
+			pickerLoading = false;
+		}
+	}
+
+	function closePicker() {
+		pickerMode = null;
+		listing = null;
+		pickerError = '';
+	}
+
+	async function confirmPicker(path: string) {
+		const mode = pickerMode;
+		closePicker();
+		if (mode === 'create') {
+			await handleCreate(path);
+		} else {
+			await handleOpen(path);
 		}
 	}
 </script>
@@ -40,23 +135,54 @@
 		</p>
 	</div>
 
-	<form class="panel" on:submit|preventDefault={() => handle('open')}>
-		<label for="vaultPath">Campaign vault path</label>
-		<input id="vaultPath" bind:value={vaultPath} placeholder="/path/to/campaign-vault" />
+	<div class="panel">
+		{#if $knownVaults.length}
+			<section class="known">
+				<h2>Existing vaults</h2>
+				<ul>
+					{#each $knownVaults as vault (vault.path)}
+						<li>
+							<button type="button" class="vault" disabled={loading} on:click={() => handleOpen(vault.path)}>
+								<span class="name">{vault.name}</span>
+								<span class="path">{vault.path}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{:else}
+			<p class="hint">Create a vault folder to get started, or browse for notes you already keep.</p>
+		{/if}
+
 		<div class="actions">
-			<button type="submit" disabled={loading || !vaultPath.trim()}>Open vault</button>
-			<button type="button" class="secondary" disabled={loading || !vaultPath.trim()} on:click={() => handle('create')}
+			<button type="button" disabled={loading} on:click={() => showPicker('open')}>Browse for a vault</button>
+			<button type="button" class="secondary" disabled={loading} on:click={() => showPicker('create')}
 				>Create vault</button
 			>
 		</div>
-		<button type="button" class="ghost" disabled={loading} on:click={() => handle('example')}
-			>Open example campaign</button
-		>
+		<button type="button" class="ghost" disabled={loading} on:click={handleExample}>Open example campaign</button>
 		{#if error}
 			<p class="error">{error}</p>
 		{/if}
-	</form>
+	</div>
 </section>
+
+{#if pickerMode && listing}
+	<FolderPicker
+		title={pickerMode === 'create' ? 'Create a campaign vault' : 'Open a campaign vault'}
+		description={pickerMode === 'create'
+			? 'Create a folder for your notes, then use it as the new vault.'
+			: 'Choose the folder that already holds your campaign notes.'}
+		confirmLabel={pickerMode === 'create' ? 'Use this folder' : 'Open this folder'}
+		{listing}
+		loading={pickerLoading}
+		error={pickerError}
+		onOpenDirectory={openDirectory}
+		onCreateDirectory={createDirectory}
+		onConfirm={confirmPicker}
+		onCancel={closePicker}
+	/>
+{/if}
 
 <style>
 	.hero {
@@ -90,26 +216,45 @@
 		margin: 0.4rem 0 1rem;
 	}
 
+	h2 {
+		margin: 0;
+		font-size: 1.05rem;
+	}
+
 	p {
 		margin: 0;
 		color: #cbd5e1;
 	}
 
-	form {
+	.panel {
 		display: grid;
 		gap: 1rem;
 	}
 
-	label {
-		font-weight: 600;
+	.known ul {
+		list-style: none;
+		margin: 0.75rem 0 0;
+		padding: 0;
+		display: grid;
+		gap: 0.5rem;
 	}
 
-	input {
+	.vault {
+		width: 100%;
+		display: grid;
+		gap: 0.2rem;
+		text-align: left;
 		padding: 0.85rem 1rem;
 		border-radius: 0.9rem;
-		border: 1px solid rgba(148, 163, 184, 0.25);
+		border: 1px solid rgba(148, 163, 184, 0.22);
 		background: rgba(15, 23, 42, 0.95);
 		color: inherit;
+	}
+
+	.vault .path,
+	.hint {
+		color: #94a3b8;
+		font-size: 0.9rem;
 	}
 
 	.actions {
