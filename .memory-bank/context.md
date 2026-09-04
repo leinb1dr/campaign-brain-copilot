@@ -1,18 +1,31 @@
 # Context
 
-**Updated:** 2026-09-03
+**Updated:** 2026-09-04
 
 ## Current work focus
 
-Memory bank initialization. No feature work is in progress.
+Cloud Agent development environment setup (branch
+`cursor/setup-cloud-agent-environment-570b`, PR #5). No application feature work in progress.
 
 ## Recent changes
+
+- Added a repo-managed Cloud Agent environment: `.cursor/environment.json` +
+  `.cursor/install.sh`. `install.sh` pins the stable Rust toolchain (the default image ships
+  1.83, which fails on the edition-2024 dependency graph), runs `npm ci`, and warms the
+  headless `cargo build --no-default-features --tests`. A `vite-dev` terminal serves the
+  browser-reviewable UI on port 1420; port 1420 is exposed.
+- Validated: `npm run check` clean, `npm run build` succeeds, `cargo test --no-default-features`
+  passes 2 tests, `install.sh` idempotent (ran twice, exit 0), and the full UI flow (open
+  example campaign → approve suggestion → dashboard/location briefing) works in the browser.
+  A draft environment build succeeded and a fresh Cloud Agent booted from it passed all checks.
+- No application code was modified.
+
+## Earlier changes
 
 - Created `.memory-bank/` with `brief.md`, `product.md`, `context.md`, `architecture.md`,
   `tech.md`, and `tasks.md`.
 - Added `AGENTS.md` at the repo root and `.cursor/rules/memory-bank.mdc` so agents are required
   to read the memory bank before every task.
-- No application code was modified.
 
 ## Repository state
 
