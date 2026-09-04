@@ -160,15 +160,23 @@ fn list_roots() -> Result<DirectoryListing, String> {
 
 #[cfg(windows)]
 fn windows_drive_entries() -> Vec<DirectoryEntry> {
-    (b'A'..=b'Z')
-        .filter_map(|letter| {
-            let drive = format!("{}:\\", letter as char);
-            let path = PathBuf::from(&drive);
-            path.is_dir().then(|| DirectoryEntry {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetLogicalDrives() -> u32;
+    }
+
+    // Bitmask of present volumes. Do not call is_dir() here: that can block for
+    // tens of seconds on empty optical drives and disconnected network shares.
+    let mask = unsafe { GetLogicalDrives() };
+    (0u32..26)
+        .filter(|bit| mask & (1 << bit) != 0)
+        .map(|bit| {
+            let letter = (b'A' + bit as u8) as char;
+            DirectoryEntry {
                 is_vault: false,
-                name: format!("{}:", letter as char),
-                path: drive,
-            })
+                name: format!("{letter}:"),
+                path: format!("{letter}:\\"),
+            }
         })
         .collect()
 }
@@ -578,6 +586,16 @@ mod tests {
         assert!(listing.parent_path.is_none());
         let rejected = create_directory("::roots".to_string(), "vault".to_string());
         assert!(rejected.unwrap_err().contains("Choose a drive or folder"));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn list_roots_uses_logical_drive_bitmask() {
+        let listing = list_directory(Some("::roots".to_string())).expect("roots listing should succeed");
+        assert!(!listing.entries.is_empty(), "Windows should report at least one logical drive");
+        assert!(listing.entries.iter().all(|entry| {
+            entry.path.len() == 3 && entry.path.ends_with(":\\") && !entry.is_vault
+        }));
     }
 
     #[test]

@@ -19,7 +19,8 @@ Create-vault flow: in-app folder picker plus remembered existing vaults.
 - Tests: Rust list/create/reopen, Vitest picker + known-vaults store, Playwright
   create-then-open.
 - Folder picker follows directory symlinks and can jump to an absolute path (other
-  Windows drives, UNC shares). Up from a Windows drive root lists `::roots`.
+  Windows drives, UNC shares). Up from a Windows drive root lists present volumes
+  via `GetLogicalDrives` (does not probe A:–Z: with `is_dir()`).
 
 ## Repository state
 
