@@ -71,6 +71,8 @@ memory bank automatically.
 
 ```bash
 npm run check                                                              # svelte-check
+npm run test:unit                                                          # Vitest (jsdom)
+npm run test:e2e                                                           # Playwright against the Vite dev server
 npm run build                                                              # static build
 cargo test --manifest-path src-tauri/Cargo.toml --no-default-features      # Rust tests
 ```
