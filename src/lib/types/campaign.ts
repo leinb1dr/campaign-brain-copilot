@@ -49,3 +49,22 @@ export interface CampaignOverview {
 	approvedFacts: ApprovedFact[];
 	locations: LocationSummary[];
 }
+
+export const DIRECTORY_ROOTS_PATH = '::roots';
+
+export interface DirectoryEntry {
+	name: string;
+	path: string;
+	isVault: boolean;
+}
+
+export interface DirectoryListing {
+	path: string;
+	parentPath: string | null;
+	entries: DirectoryEntry[];
+}
+
+export interface KnownVault {
+	name: string;
+	path: string;
+}

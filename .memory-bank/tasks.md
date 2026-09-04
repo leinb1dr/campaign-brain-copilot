@@ -7,7 +7,7 @@ performed again in the same shape. Keep entries concrete: exact files, exact ste
 
 ## Add a new Tauri command
 
-**Last performed:** not yet recorded (pattern derived from the seven existing commands)
+**Last performed:** 2026-09-04 (`list_directory` / `create_directory` for the vault picker)
 
 **Files to modify:**
 - `src-tauri/src/commands/mod.rs` — write the function

@@ -11,8 +11,10 @@ pub fn run() {
             .invoke_handler(tauri::generate_handler![
                 commands::approve_suggestion,
                 commands::create_campaign,
+                commands::create_directory,
                 commands::generate_suggestions,
                 commands::get_location_briefing,
+                commands::list_directory,
                 commands::open_campaign,
                 commands::open_example_campaign,
                 commands::read_campaign_notes,

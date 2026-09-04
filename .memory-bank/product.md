@@ -25,9 +25,10 @@ indexing afterward, and asks for confirmation rather than assuming.
 
 ## How it should work
 
-1. **Open a vault.** The welcome screen takes a folder path. The DM can open an existing
-   folder, create a new one (seeded with a `session-0.md` prompt sheet), or load the bundled
-   example campaign. The last opened vault is remembered in `localStorage`.
+1. **Open a vault.** The welcome screen opens a folder picker (create a folder and select
+   it, or browse to an existing notes folder) and lists previously opened vaults. The DM can
+   also load the bundled example campaign. Known vaults and the last opened path are
+   remembered in `localStorage`. A new vault is seeded with a `session-0.md` prompt sheet.
 2. **Notes are read, never written.** Top-level `.md` files in the vault are loaded verbatim.
 3. **Suggestions are extracted.** Regex matchers scan each non-empty, non-heading line for
    NPC names, location phrases, and plot-point verbs. Each match becomes a suggestion tagged

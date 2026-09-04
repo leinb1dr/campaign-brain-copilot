@@ -13,7 +13,10 @@
 				<h1>{$campaign.campaignName}</h1>
 				<p>{$campaign.vaultPath}</p>
 			</div>
-			<CampaignNav currentPath={$page.url.pathname} />
+			<div class="header-actions">
+				<CampaignNav currentPath={$page.url.pathname} />
+				<a class="change-vault" href="/">Change vault</a>
+			</div>
 		</header>
 		<slot />
 	</section>
@@ -39,6 +42,21 @@
 	header {
 		display: grid;
 		gap: 1rem;
+	}
+
+	.header-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.change-vault {
+		padding: 0.65rem 1rem;
+		border-radius: 999px;
+		background: rgba(51, 65, 85, 0.9);
+		border: 1px solid rgba(148, 163, 184, 0.2);
 	}
 
 	.eyebrow,
