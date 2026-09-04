@@ -1,0 +1,270 @@
+{
+  "approvedFacts": [],
+  "campaignName": "example-vault",
+  "locations": [],
+  "notes": [
+    {
+      "content": "# Session 1 - Smoke over the harbor\n- Met Captain Mirel at Blackglass Wharf after the rain quit.\n- She says the smugglers use a secret tunnel beneath Old Lantern Square.\n- Need to remember: Vargo the debt collector wants his ledger back.\n- Party found boot prints that point toward the flooded cistern.\n",
+      "fileName": "session-1.md",
+      "filePath": "session-1.md",
+      "lineCount": 5
+    },
+    {
+      "content": "# Session 2 - Abbey bells at dusk\nThe group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room.\nBrother Caldus admitted he heard chanting under the abbey crypt, maybe tied to the moon market.\nMirel promised to trade maps if the party rescues her cousin from Fogmere Crossing.\n",
+      "fileName": "session-2.md",
+      "filePath": "session-2.md",
+      "lineCount": 4
+    },
+    {
+      "content": "# Session 3 - Frostward confessions\nIn Frostward Hollow, Mayor Orsik finally admitted the bridge sabotage.\nThe party learned the Gray Banner will strike during the revel at Emberkeep Gate.\nBlackglass Wharf still feels like the handoff point for every smuggled relic in this mess.\n",
+      "fileName": "session-3.md",
+      "filePath": "session-3.md",
+      "lineCount": 4
+    }
+  ],
+  "suggestions": [
+    {
+      "context": "- Met Captain Mirel at Blackglass Wharf after the rain quit.",
+      "id": "Location:session-1.md:2:blackglass wharf",
+      "kind": "location",
+      "source": {
+        "filePath": "session-1.md",
+        "lineNumber": 2,
+        "snippet": "- Met Captain Mirel at Blackglass Wharf after the rain quit."
+      },
+      "value": "Blackglass Wharf"
+    },
+    {
+      "context": "- Met Captain Mirel at Blackglass Wharf after the rain quit.",
+      "id": "PlotPoint:session-1.md:2:- met captain mirel at blackglass wharf after the rain quit.",
+      "kind": "plot_point",
+      "source": {
+        "filePath": "session-1.md",
+        "lineNumber": 2,
+        "snippet": "- Met Captain Mirel at Blackglass Wharf after the rain quit."
+      },
+      "value": "- Met Captain Mirel at Blackglass Wharf after the rain quit."
+    },
+    {
+      "context": "- Met Captain Mirel at Blackglass Wharf after the rain quit.",
+      "id": "Npc:session-1.md:2:captain mirel",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-1.md",
+        "lineNumber": 2,
+        "snippet": "- Met Captain Mirel at Blackglass Wharf after the rain quit."
+      },
+      "value": "Captain Mirel"
+    },
+    {
+      "context": "- She says the smugglers use a secret tunnel beneath Old Lantern Square.",
+      "id": "Location:session-1.md:3:old lantern square",
+      "kind": "location",
+      "source": {
+        "filePath": "session-1.md",
+        "lineNumber": 3,
+        "snippet": "- She says the smugglers use a secret tunnel beneath Old Lantern Square."
+      },
+      "value": "Old Lantern Square"
+    },
+    {
+      "context": "- She says the smugglers use a secret tunnel beneath Old Lantern Square.",
+      "id": "Npc:session-1.md:3:lantern square",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-1.md",
+        "lineNumber": 3,
+        "snippet": "- She says the smugglers use a secret tunnel beneath Old Lantern Square."
+      },
+      "value": "Lantern Square"
+    },
+    {
+      "context": "- Need to remember: Vargo the debt collector wants his ledger back.",
+      "id": "Npc:session-1.md:4:vargo",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-1.md",
+        "lineNumber": 4,
+        "snippet": "- Need to remember: Vargo the debt collector wants his ledger back."
+      },
+      "value": "Vargo"
+    },
+    {
+      "context": "- Party found boot prints that point toward the flooded cistern.",
+      "id": "PlotPoint:session-1.md:5:- party found boot prints that point toward the flooded cistern.",
+      "kind": "plot_point",
+      "source": {
+        "filePath": "session-1.md",
+        "lineNumber": 5,
+        "snippet": "- Party found boot prints that point toward the flooded cistern."
+      },
+      "value": "- Party found boot prints that point toward the flooded cistern."
+    },
+    {
+      "context": "- Party found boot prints that point toward the flooded cistern.",
+      "id": "Npc:session-1.md:5:party",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-1.md",
+        "lineNumber": 5,
+        "snippet": "- Party found boot prints that point toward the flooded cistern."
+      },
+      "value": "Party"
+    },
+    {
+      "context": "The group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room.",
+      "id": "PlotPoint:session-2.md:2:the group reached saint branna abbey before curfew and found sister hale hiding the brass key in the reliquary room.",
+      "kind": "plot_point",
+      "source": {
+        "filePath": "session-2.md",
+        "lineNumber": 2,
+        "snippet": "The group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room."
+      },
+      "value": "The group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room."
+    },
+    {
+      "context": "The group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room.",
+      "id": "Npc:session-2.md:2:saint branna",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-2.md",
+        "lineNumber": 2,
+        "snippet": "The group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room."
+      },
+      "value": "Saint Branna"
+    },
+    {
+      "context": "The group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room.",
+      "id": "Npc:session-2.md:2:abbey",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-2.md",
+        "lineNumber": 2,
+        "snippet": "The group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room."
+      },
+      "value": "Abbey"
+    },
+    {
+      "context": "The group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room.",
+      "id": "Npc:session-2.md:2:sister hale",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-2.md",
+        "lineNumber": 2,
+        "snippet": "The group reached Saint Branna Abbey before curfew and found Sister Hale hiding the brass key in the reliquary room."
+      },
+      "value": "Sister Hale"
+    },
+    {
+      "context": "Brother Caldus admitted he heard chanting under the abbey crypt, maybe tied to the moon market.",
+      "id": "PlotPoint:session-2.md:3:brother caldus admitted he heard chanting under the abbey crypt, maybe tied to the moon market.",
+      "kind": "plot_point",
+      "source": {
+        "filePath": "session-2.md",
+        "lineNumber": 3,
+        "snippet": "Brother Caldus admitted he heard chanting under the abbey crypt, maybe tied to the moon market."
+      },
+      "value": "Brother Caldus admitted he heard chanting under the abbey crypt, maybe tied to the moon market."
+    },
+    {
+      "context": "Brother Caldus admitted he heard chanting under the abbey crypt, maybe tied to the moon market.",
+      "id": "Npc:session-2.md:3:brother caldus",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-2.md",
+        "lineNumber": 3,
+        "snippet": "Brother Caldus admitted he heard chanting under the abbey crypt, maybe tied to the moon market."
+      },
+      "value": "Brother Caldus"
+    },
+    {
+      "context": "Mirel promised to trade maps if the party rescues her cousin from Fogmere Crossing.",
+      "id": "Location:session-2.md:4:fogmere crossing",
+      "kind": "location",
+      "source": {
+        "filePath": "session-2.md",
+        "lineNumber": 4,
+        "snippet": "Mirel promised to trade maps if the party rescues her cousin from Fogmere Crossing."
+      },
+      "value": "Fogmere Crossing"
+    },
+    {
+      "context": "Mirel promised to trade maps if the party rescues her cousin from Fogmere Crossing.",
+      "id": "PlotPoint:session-2.md:4:mirel promised to trade maps if the party rescues her cousin from fogmere crossing.",
+      "kind": "plot_point",
+      "source": {
+        "filePath": "session-2.md",
+        "lineNumber": 4,
+        "snippet": "Mirel promised to trade maps if the party rescues her cousin from Fogmere Crossing."
+      },
+      "value": "Mirel promised to trade maps if the party rescues her cousin from Fogmere Crossing."
+    },
+    {
+      "context": "Mirel promised to trade maps if the party rescues her cousin from Fogmere Crossing.",
+      "id": "Npc:session-2.md:4:mirel",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-2.md",
+        "lineNumber": 4,
+        "snippet": "Mirel promised to trade maps if the party rescues her cousin from Fogmere Crossing."
+      },
+      "value": "Mirel"
+    },
+    {
+      "context": "In Frostward Hollow, Mayor Orsik finally admitted the bridge sabotage.",
+      "id": "PlotPoint:session-3.md:2:in frostward hollow, mayor orsik finally admitted the bridge sabotage.",
+      "kind": "plot_point",
+      "source": {
+        "filePath": "session-3.md",
+        "lineNumber": 2,
+        "snippet": "In Frostward Hollow, Mayor Orsik finally admitted the bridge sabotage."
+      },
+      "value": "In Frostward Hollow, Mayor Orsik finally admitted the bridge sabotage."
+    },
+    {
+      "context": "In Frostward Hollow, Mayor Orsik finally admitted the bridge sabotage.",
+      "id": "Npc:session-3.md:2:mayor orsik",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-3.md",
+        "lineNumber": 2,
+        "snippet": "In Frostward Hollow, Mayor Orsik finally admitted the bridge sabotage."
+      },
+      "value": "Mayor Orsik"
+    },
+    {
+      "context": "The party learned the Gray Banner will strike during the revel at Emberkeep Gate.",
+      "id": "Location:session-3.md:3:emberkeep gate",
+      "kind": "location",
+      "source": {
+        "filePath": "session-3.md",
+        "lineNumber": 3,
+        "snippet": "The party learned the Gray Banner will strike during the revel at Emberkeep Gate."
+      },
+      "value": "Emberkeep Gate"
+    },
+    {
+      "context": "The party learned the Gray Banner will strike during the revel at Emberkeep Gate.",
+      "id": "PlotPoint:session-3.md:3:the party learned the gray banner will strike during the revel at emberkeep gate.",
+      "kind": "plot_point",
+      "source": {
+        "filePath": "session-3.md",
+        "lineNumber": 3,
+        "snippet": "The party learned the Gray Banner will strike during the revel at Emberkeep Gate."
+      },
+      "value": "The party learned the Gray Banner will strike during the revel at Emberkeep Gate."
+    },
+    {
+      "context": "The party learned the Gray Banner will strike during the revel at Emberkeep Gate.",
+      "id": "Npc:session-3.md:3:gray banner",
+      "kind": "npc",
+      "source": {
+        "filePath": "session-3.md",
+        "lineNumber": 3,
+        "snippet": "The party learned the Gray Banner will strike during the revel at Emberkeep Gate."
+      },
+      "value": "Gray Banner"
+    }
+  ],
+  "vaultPath": "<example-vault>"
+}

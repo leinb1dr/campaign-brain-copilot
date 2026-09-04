@@ -4,37 +4,40 @@
 
 ## Current work focus
 
-Cloud Agent development environment setup (branch
-`cursor/setup-cloud-agent-environment-570b`, PR #5). No application feature work in progress.
+Layered automated tests for the existing campaign flow (Rust library, Vitest, Playwright).
+No product-feature work is in progress.
 
 ## Recent changes
 
+- Added command-level `cargo test --no-default-features` coverage against a temp copy of
+  `example-vault`: SQLite round-trip, approved-fact dedupe, location briefing assembly.
+- `open_example_campaign` is still untested: without `desktop-app` it would write SQLite into
+  the checked-in vault; with `desktop-app` it needs a Tauri `AppHandle`.
+- Added Vitest (`jsdom`) for `visibleSuggestions`, localStorage vault persistence, and
+  `SuggestionQueue`.
+- Added Playwright Chromium tests that stub `window.__TAURI_INTERNALS__.invoke` so the
+  production `invokeCommand` path runs instead of the browser demo fallback. Campaign JSON is
+  generated from `open_campaign(example-vault)` and kept honest by a Rust fixture assertion.
+- Split `.github/workflows/ci.yml` into `rust` and `frontend` jobs. Release still depends on
+  both. No WebdriverIO / native-binary smoke suite.
 - Added a repo-managed Cloud Agent environment: `.cursor/environment.json` +
   `.cursor/install.sh`. `install.sh` pins the stable Rust toolchain (the default image ships
-  1.83, which fails on the edition-2024 dependency graph), runs `npm ci`, and warms the
-  headless `cargo build --no-default-features --tests`. A `vite-dev` terminal serves the
-  browser-reviewable UI on port 1420; port 1420 is exposed.
-- Validated: `npm run check` clean, `npm run build` succeeds, `cargo test --no-default-features`
-  passes 2 tests, `install.sh` idempotent (ran twice, exit 0), and the full UI flow (open
-  example campaign → approve suggestion → dashboard/location briefing) works in the browser.
-  A draft environment build succeeded and a fresh Cloud Agent booted from it passed all checks.
-- No application code was modified.
-
-## Earlier changes
-
-- Created `.memory-bank/` with `brief.md`, `product.md`, `context.md`, `architecture.md`,
-  `tech.md`, and `tasks.md`.
-- Added `AGENTS.md` at the repo root and `.cursor/rules/memory-bank.mdc` so agents are required
-  to read the memory bank before every task.
+  Rust 1.83, which fails on edition-2024 crates), runs `npm ci`, and warms the headless
+  `cargo build --no-default-features --tests`. A `vite-dev` terminal serves the UI on port
+  1420, and port 1420 is exposed.
+- Validated the environment setup: `npm run check`, `npm run build`, and
+  `cargo test --no-default-features` all pass; `install.sh` is idempotent.
 
 ## Repository state
 
-The application is feature-complete against its original bootstrap scope. All five screens
-work: welcome, dashboard, imported notes, suggestions review, and location briefing. Git
-history is short — an initial commit, a bootstrap commit, and the merge of PR #1.
+The application is still feature-complete against its original bootstrap scope. Verification
+that passed on 2026-09-04:
 
-Verified locally on 2026-09-03: `npm run check` clean, `npm run build` succeeds,
-`cargo test --no-default-features` passes 2 tests.
+- `npm run check` — 0 errors, 0 warnings
+- `npm run test:unit` — 11 passed
+- `npm run test:e2e` — 3 passed (Playwright Chromium; no visual browser-tool review)
+- `npm run build` — succeeds
+- `cargo test --no-default-features` — 6 passed, 1 ignored (fixture dump helper)
 
 ## Next steps
 
@@ -44,8 +47,8 @@ Nothing is committed to. The clearest candidates, in rough order of value:
    reappear after restart. Needs a `rejected_facts` table and filtering in `load_campaign`.
 2. **De-overfit the NPC extractor.** `parser::should_skip_npc` hard-codes example-vault
    location names as a stop list; it will not generalize to a real campaign.
-3. **Fix `open_example_campaign` for packaged builds.** It resolves a compile-time
-   `CARGO_MANIFEST_DIR` path instead of using Tauri's resource resolver.
+3. **Fix `open_example_campaign` for packaged builds.** It now uses Tauri's resource resolver
+   in `desktop-app` builds, but that path is still untested in CI.
 4. **Add a native folder picker.** Requires `tauri-plugin-dialog` plus a capability entry;
    today the user types a path.
 5. **Fix the `cargo test` command in `README.md`** — it contains an absolute CI runner path.

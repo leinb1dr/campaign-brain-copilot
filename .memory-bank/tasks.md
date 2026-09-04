@@ -103,3 +103,29 @@ performed again in the same shape. Keep entries concrete: exact files, exact ste
   installed. Match the existing style rather than introducing runes piecemeal.
 - Data loading on a dynamic route happens in `onMount`, not in a `+page.ts` load function — see
   `campaign/location/[id]/+page.svelte`.
+
+---
+
+## Run the layered test suite
+
+**Last performed:** 2026-09-04
+
+**Files to modify:** whichever layer the change belongs to
+- `src-tauri/src/commands/mod.rs` / `src-tauri/src/parser/mod.rs` — Rust tests
+- `src/lib/stores/campaign.test.ts`, `src/components/**/*.test.ts` — Vitest
+- `e2e/campaign.spec.ts`, `e2e/fixtures/tauri.ts` — Playwright
+- `e2e/fixtures/example-campaign.json` — regenerate if `example-vault` or extraction changes
+
+**Steps:**
+1. `npm run check`
+2. `npm run test:unit`
+3. `cargo test --manifest-path src-tauri/Cargo.toml --no-default-features`
+4. If `example-vault` extraction output changed, regenerate the Playwright fixture:
+   `cargo test --manifest-path src-tauri/Cargo.toml --no-default-features dump_example_campaign_fixture -- --ignored`
+5. `npx playwright install --with-deps chromium` once per machine, then `npm run test:e2e`
+6. `npm run build` if the frontend adapter output might have changed
+
+**Gotchas:**
+- Playwright must stub `window.__TAURI_INTERNALS__.invoke` (not `mockIPC`, not the demo fallback in `client.ts`).
+- Vitest 5/Vite 8 needs `.svelte-kit/tsconfig.json`; `test:unit` runs `svelte-kit sync` first.
+- Do not enable the `desktop-app` Cargo feature in headless CI — it needs GTK/WebKit.

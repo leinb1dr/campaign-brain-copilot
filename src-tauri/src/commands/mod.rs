@@ -175,3 +175,204 @@ fn load_campaign(vault: PathBuf) -> Result<CampaignOverview, String> {
         approved_facts,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    // open_example_campaign is not exercised here: without `desktop-app` it writes SQLite
+    // into the checked-in example-vault, and with `desktop-app` it needs a Tauri AppHandle
+    // plus the resource resolver. load_campaign is covered via open_campaign on a temp copy.
+    use crate::models::SuggestionKind;
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    fn unique_temp_dir(prefix: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "{prefix}-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time should be after unix epoch")
+                .as_nanos()
+        ))
+    }
+
+    fn example_vault_src() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../example-vault")
+    }
+
+    fn fixture_path() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../e2e/fixtures/example-campaign.json")
+    }
+
+    fn copy_dir(from: &Path, to: &Path) {
+        fs::create_dir_all(to).expect("temp vault directory should be created");
+        for entry in fs::read_dir(from).expect("source vault should be readable") {
+            let entry = entry.expect("vault entry should be readable");
+            let destination = to.join(entry.file_name());
+            if entry.file_type().expect("entry type should be readable").is_dir() {
+                copy_dir(&entry.path(), &destination);
+            } else {
+                fs::copy(entry.path(), destination).expect("vault file should copy");
+            }
+        }
+    }
+
+    fn copy_example_vault() -> PathBuf {
+        let destination = unique_temp_dir("campaign-brain-example-vault");
+        copy_dir(&example_vault_src(), &destination);
+        destination
+    }
+
+    fn normalize_overview_json(overview: &CampaignOverview) -> serde_json::Value {
+        let mut value = serde_json::to_value(overview).expect("overview should serialize");
+        value["vaultPath"] = serde_json::json!("<example-vault>");
+        value["campaignName"] = serde_json::json!("example-vault");
+        value
+    }
+
+    #[test]
+    fn open_campaign_round_trips_example_vault_through_sqlite() {
+        let vault = copy_example_vault();
+        let vault_path = vault.display().to_string();
+
+        let first = open_campaign(vault_path.clone()).expect("example vault should open");
+        assert_eq!(first.notes.len(), 3);
+        assert!(first.approved_facts.is_empty());
+        assert!(first.suggestions.iter().any(|suggestion| {
+            suggestion.kind == SuggestionKind::Location && suggestion.value == "Blackglass Wharf"
+        }));
+        assert!(vault.join(".campaign-brain.sqlite3").exists());
+
+        let second = open_campaign(vault_path).expect("reopening the vault should reuse sqlite");
+        assert_eq!(second.notes.len(), first.notes.len());
+        assert_eq!(second.suggestions.len(), first.suggestions.len());
+        assert!(second.approved_facts.is_empty());
+
+        fs::remove_dir_all(vault).expect("temporary vault should be removed");
+    }
+
+    #[test]
+    fn example_vault_open_campaign_matches_checked_in_fixture() {
+        let vault = copy_example_vault();
+        let overview = open_campaign(vault.display().to_string()).expect("example vault should open");
+        let actual = normalize_overview_json(&overview);
+        let expected: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(fixture_path()).expect("checked-in example-campaign fixture should exist"),
+        )
+        .expect("fixture JSON should parse");
+
+        assert_eq!(
+            actual, expected,
+            "e2e/fixtures/example-campaign.json drifted from open_campaign(example-vault); regenerate it with dump_example_campaign_fixture"
+        );
+
+        fs::remove_dir_all(vault).expect("temporary vault should be removed");
+    }
+
+    #[test]
+    fn approve_suggestion_persists_and_dedupes_by_kind_and_value() {
+        let vault = copy_example_vault();
+        fs::write(
+            vault.join("session-4.md"),
+            "The smugglers met again at Blackglass Wharf after midnight.\n",
+        )
+        .expect("duplicate location note should be written");
+
+        let opened = open_campaign(vault.display().to_string()).expect("vault should open");
+        let wharf_suggestions = opened
+            .suggestions
+            .iter()
+            .filter(|suggestion| {
+                suggestion.kind == SuggestionKind::Location && suggestion.value == "Blackglass Wharf"
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        assert!(
+            wharf_suggestions.len() >= 2,
+            "expected Blackglass Wharf in example-vault plus session-4.md, got {}",
+            wharf_suggestions.len()
+        );
+
+        let first = wharf_suggestions[0].clone();
+        let after_first =
+            approve_suggestion(vault.display().to_string(), first.clone()).expect("first approval should save");
+        assert!(!after_first.suggestions.iter().any(|suggestion| {
+            suggestion.kind == SuggestionKind::Location && suggestion.value.eq_ignore_ascii_case("Blackglass Wharf")
+        }));
+        assert_eq!(
+            after_first
+                .approved_facts
+                .iter()
+                .filter(|fact| fact.value == "Blackglass Wharf")
+                .count(),
+            1
+        );
+
+        let after_second =
+            approve_suggestion(vault.display().to_string(), first).expect("duplicate approval should be ignored");
+        assert_eq!(
+            after_second
+                .approved_facts
+                .iter()
+                .filter(|fact| fact.value == "Blackglass Wharf")
+                .count(),
+            1
+        );
+
+        fs::remove_dir_all(vault).expect("temporary vault should be removed");
+    }
+
+    #[test]
+    fn get_location_briefing_assembles_sources_and_related_plot_points() {
+        let vault = copy_example_vault();
+        let opened = open_campaign(vault.display().to_string()).expect("vault should open");
+
+        let location = opened
+            .suggestions
+            .iter()
+            .find(|suggestion| {
+                suggestion.kind == SuggestionKind::Location && suggestion.value == "Blackglass Wharf"
+            })
+            .cloned()
+            .expect("example-vault should extract Blackglass Wharf");
+        let plot = opened
+            .suggestions
+            .iter()
+            .find(|suggestion| {
+                suggestion.kind == SuggestionKind::PlotPoint && suggestion.source.file_path == location.source.file_path
+            })
+            .cloned()
+            .expect("example-vault should extract a plot point from the same note as Blackglass Wharf");
+
+        approve_suggestion(vault.display().to_string(), location).expect("location should approve");
+        approve_suggestion(vault.display().to_string(), plot.clone()).expect("plot point should approve");
+
+        let briefing = get_location_briefing(vault.display().to_string(), slugify("Blackglass Wharf"))
+            .expect("briefing should assemble");
+        assert_eq!(briefing.id, "blackglass-wharf");
+        assert_eq!(briefing.name, "Blackglass Wharf");
+        assert!(briefing
+            .sources
+            .iter()
+            .any(|source| source.file_path == "session-1.md"));
+        assert!(briefing.related_plot_points.iter().any(|value| value == &plot.value));
+
+        fs::remove_dir_all(vault).expect("temporary vault should be removed");
+    }
+
+    #[test]
+    #[ignore = "run explicitly to regenerate e2e/fixtures/example-campaign.json from example-vault"]
+    fn dump_example_campaign_fixture() {
+        let vault = copy_example_vault();
+        let overview = open_campaign(vault.display().to_string()).expect("example vault should open");
+        let json = normalize_overview_json(&overview);
+        let path = fixture_path();
+        fs::create_dir_all(path.parent().expect("fixture directory")).expect("fixture directory should exist");
+        fs::write(&path, format!("{}\n", serde_json::to_string_pretty(&json).expect("fixture should serialize")))
+            .expect("fixture should be written");
+        fs::remove_dir_all(vault).expect("temporary vault should be removed");
+    }
+}
